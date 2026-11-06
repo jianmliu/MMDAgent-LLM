@@ -284,6 +284,10 @@ public:
    /* getMaterialMorph: find material morph data by name */
    PMDMaterialMorph *getMaterialMorph(const char *name);
 
+   /* freezeRigidBodies: hold simulated rigid bodies whose names match pattern ('*' wildcards)
+      kinematic, following their bones (freeze true), or simulate them again; returns how many */
+   int freezeRigidBodies(const char *pattern, bool freeze);
+
    /* setMaterialTint: tint the materials named name ("*" = all); returns how many matched */
    int setMaterialTint(const char *name, const float *rgb);
 

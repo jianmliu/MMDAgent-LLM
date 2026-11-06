@@ -65,6 +65,8 @@ void PMDRigidBody::initialize()
    m_shape = NULL;
    m_body = NULL;
    m_motionState = NULL;
+   m_name = NULL;
+   m_frozen = false;
    m_groupID = 0;
    m_groupMask = 0;
 
@@ -102,6 +104,8 @@ void PMDRigidBody::clear()
    }
    if (m_shape)
       delete m_shape;
+   if (m_name)
+      free(m_name);
 
    initialize();
 }
@@ -127,6 +131,14 @@ bool PMDRigidBody::setup(PMDFile_RigidBody *rb, PMDBone *bone)
    btTransform startTrans;
 
    clear();
+
+   /* name (PMD: Shift_JIS, 20 bytes) */
+   {
+      char sjisBuff[21];
+      strncpy(sjisBuff, rb->name, 20);
+      sjisBuff[20] = '\0';
+      m_name = sjisBuff[0] ? MMDFiles_strdup_from_sjis_to_utf8(sjisBuff) : NULL;
+   }
 
    /* store bone */
    m_bone = bone;
@@ -251,7 +263,7 @@ void PMDRigidBody::applyTransformToBone()
 {
    btTransform tr;
 
-   if (m_type == 0 || m_bone == NULL || m_noBone) return;
+   if (m_type == 0 || m_bone == NULL || m_noBone || m_frozen) return;
 
    tr = m_body->getCenterOfMassTransform();
    tr *= m_transInv;
@@ -275,6 +287,7 @@ void PMDRigidBody::setKinematic(bool flag)
    PMDBone *base;
 
    if (m_type == 0) return; /* always kinematic */
+   if (m_frozen && !flag) return; /* held kinematic */
 
    if (flag) {
       /* default to kinematic */
@@ -354,4 +367,52 @@ void PMDRigidBody::setKinematic(bool flag)
 btRigidBody *PMDRigidBody::getBody()
 {
    return m_body;
+}
+
+/* PMDRigidBody::setName: set name (UTF-8) */
+void PMDRigidBody::setName(const char *name)
+{
+   if (m_name)
+      free(m_name);
+   m_name = name ? MMDFiles_strdup(name) : NULL;
+}
+
+/* PMDRigidBody::getName: get name (UTF-8) */
+const char *PMDRigidBody::getName()
+{
+   return m_name;
+}
+
+/* PMDRigidBody::setFrozen: hold a simulated body kinematic, or let it be simulated again */
+bool PMDRigidBody::setFrozen(bool frozen, bool simulationEnabled)
+{
+   if (m_type == 0 || m_body == NULL) return false;
+   if (frozen == m_frozen) return true;
+   if (frozen) {
+#ifdef MY_RESETPHYSICS
+      setKinematic(true, false);
+#else
+      setKinematic(true);
+#endif
+      m_frozen = true;
+      /* the bone follows its parent and motions again */
+      if (m_bone && !m_noBone) m_bone->setSimulatedFlag(false);
+   } else {
+      m_frozen = false;
+      if (m_bone && !m_noBone) m_bone->setSimulatedFlag(true);
+      if (simulationEnabled) {
+#ifdef MY_RESETPHYSICS
+         setKinematic(false, false);
+#else
+         setKinematic(false);
+#endif
+      }
+   }
+   return true;
+}
+
+/* PMDRigidBody::isFrozen: true while held kinematic */
+bool PMDRigidBody::isFrozen()
+{
+   return m_frozen;
 }

@@ -948,8 +948,9 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
             int bone;
             float size3[3], pos[3], rot[3];
             PMDBone *b;
+            std::string rigidName;
             memset(&fr, 0, sizeof(PMDFile_RigidBody));
-            r.text();
+            rigidName = r.text();
             r.text();
             bone = r.idx(sizeBone);
             fr.collisionGroupID = r.u8();
@@ -983,6 +984,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
                fr.rot[j] = rot[j];
             if (!m_rigidBodyList[i].setup(&fr, b))
                return false;
+            m_rigidBodyList[i].setName(rigidName.c_str());
             /* flag the bones under simulation in order to skip IK solving for those bones */
             if (fr.type != 0 && fr.boneID != 0xFFFF)
                m_boneList[fr.boneID].setSimulatedFlag(true);

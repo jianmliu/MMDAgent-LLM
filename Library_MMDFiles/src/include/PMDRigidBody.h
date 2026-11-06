@@ -81,6 +81,9 @@ private:
 
    btDiscreteDynamicsWorld *m_world; /* pointer to the simulation world where this rigid body exists */
 
+   char *m_name;  /* name (UTF-8), NULL if none */
+   bool m_frozen; /* true while a simulated body is held kinematic (MODEL_FREEZEPHYSICS) */
+
    /* initialize: initialize PMDRigidBody */
    void initialize();
 
@@ -113,4 +116,17 @@ public:
 
    /* getBody: get rigid body */
    btRigidBody *getBody();
+
+   /* setName: set name (UTF-8) */
+   void setName(const char *name);
+
+   /* getName: get name (UTF-8), NULL if none */
+   const char *getName();
+
+   /* setFrozen: hold a simulated body kinematic, following its bone (true), or let it be
+      simulated again (false, when simulationEnabled); returns false for kinematic bodies */
+   bool setFrozen(bool frozen, bool simulationEnabled);
+
+   /* isFrozen: true while held kinematic */
+   bool isFrozen();
 };

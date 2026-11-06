@@ -430,6 +430,36 @@ bool PMDModel::read(const char *file, BulletPhysics *bullet, SystemTexture *syst
    return true;
 }
 
+/* globMatch: match name against pattern with '*' wildcards */
+static bool globMatch(const char *name, const char *pattern)
+{
+   if (*pattern == '\0') return *name == '\0';
+   if (*pattern == '*') {
+      while (*pattern == '*') pattern++;
+      if (*pattern == '\0') return true;
+      for (; *name; name++)
+         if (globMatch(name, pattern)) return true;
+      return false;
+   }
+   return *name != '\0' && *name == *pattern && globMatch(name + 1, pattern + 1);
+}
+
+/* PMDModel::freezeRigidBodies: hold matching simulated rigid bodies kinematic, or release them */
+int PMDModel::freezeRigidBodies(const char *pattern, bool freeze)
+{
+   unsigned int i;
+   int n = 0;
+
+   for (i = 0; i < m_numRigidBody; i++) {
+      const char *name = m_rigidBodyList[i].getName();
+      if (name && globMatch(name, pattern) && m_rigidBodyList[i].setFrozen(freeze, m_enableSimulation))
+         n++;
+   }
+   if (n > 0 && m_bulletPhysics)
+      m_bulletPhysics->setModifiedFlag();
+   return n;
+}
+
 /* PMDModel::setMaterialTint: tint the materials named name ("*" = all); returns how many matched */
 int PMDModel::setMaterialTint(const char *name, const float *rgb)
 {

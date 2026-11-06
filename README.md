@@ -46,6 +46,15 @@ that name. In toon shading the tint is the color shown: a material lit brighter 
 (diffuse / 2 + ambient above 1) is brought down to white first. Like a multiply material morph,
 it only recolors light textures; dark texels stay dark.
 
+## Freezing physics per rigid body (this fork)
+
+`MODEL_FREEZEPHYSICS|(model alias)|(rigid body name pattern, * = any)|ON` holds the matching
+simulated rigid bodies kinematic: they follow their bones (and the bones follow their parents
+and motions) instead of being simulated, while still colliding with the rest. `OFF` simulates
+them again. MMDAgent-EX answers `MODEL_EVENT_FREEZEPHYSICS|(alias)|(pattern)|(count)`.
+Useful for dense cloth nets (skirts of hundreds of jointed bodies) that never settle in
+MMDAgent-EX's Bullet setup and shake. Rigid body names now come from the model (PMD and PMX).
+
 ## Tutorial
 
 There is a [tutorial doc](https://mmdagent-ex.dev/docs/build/) that guides you how to build and run MMDAgent-EX.
