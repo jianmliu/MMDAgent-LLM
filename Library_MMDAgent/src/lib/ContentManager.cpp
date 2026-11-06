@@ -507,6 +507,9 @@ static void localPopupAddHandler(int id, int item, int choice, void *data)
 /* ContentManager::menuHandler: menu handler callback */
 void ContentManager::menuHandler(int id, int item)
 {
+   /* companion mode: bookmarks would switch the content */
+   if (m_mmdagent && m_mmdagent->getCompanionMode())
+      return;
    if (m_cacheDirList == NULL)
       return;
 
@@ -529,6 +532,8 @@ void ContentManager::menuHandler(int id, int item)
 /* ContentManager::popupHandler: popup handler callback */
 void ContentManager::popupHandler(int id, int item, int choice)
 {
+   if (m_mmdagent && m_mmdagent->getCompanionMode())
+      return;
    char *contentDirName;
    char buff[MMDAGENT_MAXBUFLEN];
    char buff2[MMDAGENT_MAXBUFLEN];

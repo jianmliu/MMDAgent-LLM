@@ -142,6 +142,7 @@ void Option::initialize()
    m_bulletFloor = OPTION_BULLETFLOOR_DEF;
 
    m_showButton = OPTION_SHOWBUTTON_DEF;
+   m_companionMode = OPTION_COMPANIONMODE_DEF;
 
    m_useDoppelShadow = OPTION_DOPPELSHADOW_DEF;
    m_doppelShadowColor[0] = OPTION_DOPPELSHADOWCOLORR_DEF;
@@ -336,6 +337,8 @@ bool Option::load(const char *file, ZFileKey *key, char **errstr)
          setBulletFloor(MMDAgent_str2bool(p1));
       } else if (MMDAgent_strequal(buf, OPTION_SHOWBUTTON_STR)) {
          setShowButton(MMDAgent_str2bool(p1));
+      } else if (MMDAgent_strequal(buf, OPTION_COMPANIONMODE_STR)) {
+         setCompanionMode(MMDAgent_str2bool(p1));
       } else if (MMDAgent_strequal(buf, OPTION_DOPPELSHADOW_STR)) {
          setUseDoppelShadow(MMDAgent_str2bool(p1));
       } else if (MMDAgent_strequal(buf, OPTION_DOPPELSHADOWCOLOR_STR)) {
@@ -1106,6 +1109,18 @@ bool Option::getShowButton()
 void Option::setShowButton(bool b)
 {
    m_showButton = b;
+}
+
+/* Option::getCompanionMode: get companion mode flag */
+bool Option::getCompanionMode()
+{
+   return m_companionMode;
+}
+
+/* Option::setCompanionMode: set companion mode flag */
+void Option::setCompanionMode(bool b)
+{
+   m_companionMode = b;
 }
 
 /* Option::getUseDoppelShadow: get use of doppel shadow */

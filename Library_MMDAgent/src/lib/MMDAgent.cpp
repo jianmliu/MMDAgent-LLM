@@ -2133,6 +2133,9 @@ bool MMDAgent::setupSystem(const char *systemDirName, const char *pluginDirName,
    return true;
 }
 
+/* menu items not offered in companion mode (defined with procMenu) */
+static bool isCompanionBlockedMenuItem(const char *page, int item);
+
 /* MMDAgent::setupContent: setup content */
 bool MMDAgent::setupContent(int argc, char **argv)
 {
@@ -2296,6 +2299,28 @@ bool MMDAgent::setupContent(int argc, char **argv)
 
    if (urlPath)
       free(urlPath);
+
+   /* companion mode is set in the content .mdf, read just above: apply it now */
+   if (getCompanionMode()) {
+      /* no tab bar (home / readme / bookmark / history / menu): the app drives the content */
+      if (m_tabbar) {
+         delete m_tabbar;
+         m_tabbar = NULL;
+      }
+      if (m_menu) {
+         int bookmark = m_menu->find("[Bookmark]");
+         if (bookmark >= 0)
+            m_menu->remove(bookmark);
+         const char *pages[] = { "[Window]", "[Action]", "[System]" };
+         for (const char *page : pages) {
+            int pid = m_menu->find(page);
+            for (int row = 0; pid >= 0 && row <= 6; row++)
+               if (isCompanionBlockedMenuItem(page, row))
+                  m_menu->setItemStatus(pid, row, MENUITEM_STATUS_DISABLED);
+         }
+      }
+      sendLogString(m_moduleId, MLOG_STATUS, "companion mode: tab bar, bookmarks, PMX mark, Esc quit, file drops and content keys are off");
+   }
 
    return true;
 }
@@ -3216,7 +3241,7 @@ bool MMDAgent::renderScene()
    }
 
    /* top-right indicator */
-   if (m_hasExtModel) {
+   if (m_hasExtModel && getCompanionMode() == false) {
       /* show using ext model mark */
       MMDAgent_snprintf(buff, MMDAGENT_MAXBUFLEN, "PMX");
       if (m_font == NULL || m_font->getTextDrawElementsWithScale(buff, &m_elem, m_elem.textLen, width - 3.0f - MMDAGENT_INDICATOR_OFFSET, height - 1.5f - top_space, 0.0f, 1.5f) == false) {
@@ -4008,6 +4033,25 @@ Tabbar *MMDAgent::getTabbar()
    return m_tabbar;
 }
 
+/* MMDAgent::getCompanionMode: true when an app drives MMDAgent-EX (companion_mode=true) */
+bool MMDAgent::getCompanionMode()
+{
+   return m_option && m_option->getCompanionMode();
+}
+
+/* isCompanionBlockedMenuItem: menu items that leave or change the content, delete data,
+   download or open other programs: not offered in companion mode */
+static bool isCompanionBlockedMenuItem(const char *page, int item)
+{
+   if (MMDAgent_strequal(page, "[Window]"))
+      return item == 4 || item == 5 || item == 6;  /* FST editor, Explorer, external log */
+   if (MMDAgent_strequal(page, "[Action]"))
+      return item == 2 || item == 4 || item == 5 || item == 6;  /* browse content, set/clear home, reload */
+   if (MMDAgent_strequal(page, "[System]"))
+      return item >= 2 && item <= 5;  /* system update, delete bookmark / cache, clear all */
+   return false;
+}
+
 /* MMDAgent::requireSystemUpdate: check if system update is required */
 bool MMDAgent::requireSystemUpdate()
 {
@@ -4041,6 +4085,12 @@ static void menuHandler(int id, int item, void *data)
 /* MMDAgent::procMenu: process menu */
 void MMDAgent::procMenu(int id, int item)
 {
+   if (getCompanionMode()) {
+      const char *pages[] = { "[Window]", "[Action]", "[System]" };
+      for (const char *page : pages)
+         if (m_menu->find(page) == id && isCompanionBlockedMenuItem(page, item))
+            return;
+   }
    if (m_menu->find("[Action]") == id) {
       switch (item) {
       case 0: /* toggle camera */
@@ -4179,7 +4229,7 @@ void MMDAgent::procMenu(int id, int item)
          break;
       }
 #endif /* MOBILE_SCREEN */
-   } else if (m_menu->find("[System]"), id) {
+   } else if (m_menu->find("[System]") == id) {
       switch (item) {
       case 0: /* Toggle VSync */
 #ifndef MOBILE_SCREEN
@@ -6403,6 +6453,12 @@ void MMDAgent::procDropFileMessage(const char * file, int x, int y)
    if(MMDAgent_strlen(file) <= 0)
       return;
 
+   /* companion mode: a dropped file would replace the model or switch the content */
+   if (getCompanionMode()) {
+      sendLogString(m_moduleId, MLOG_STATUS, "companion mode: ignored dropped file %s", file);
+      return;
+   }
+
    sendMessage(m_moduleId, MMDAGENT_EVENT_DRAGANDDROP, "%s|%d|%d", file, x, y);
 
    if (MMDAgent_strtailmatch(file, ".vmd") || MMDAgent_strtailmatch(file, ".VMD")) {
@@ -6565,6 +6621,8 @@ static void historyMenuHandler(int id, int item, void *data)
 /* MMDAgent::callHistory: call history */
 void MMDAgent::callHistory()
 {
+   if (getCompanionMode())
+      return;
    char buff[MMDAGENT_MAXBUFLEN];
    char buff2[MMDAGENT_MAXBUFLEN];
    char *historyFile;
