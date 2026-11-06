@@ -56,6 +56,7 @@
     <ClCompile Include="src\lib\PMDMaterialMorph.cpp" />
     <ClCompile Include="src\lib\PMDModel.cpp" />
     <ClCompile Include="src\lib\PMDModel_parse.cpp" />
+    <ClCompile Include="src\lib\PMDModel_parsePMX.cpp" />
     <ClCompile Include="src\lib\PMDModel_render.cpp" />
     <ClCompile Include="src\lib\PMDModel_update.cpp" />
     <ClCompile Include="src\lib\PMDRigidBody.cpp" />

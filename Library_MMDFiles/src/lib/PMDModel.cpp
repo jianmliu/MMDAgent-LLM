@@ -358,6 +358,21 @@ bool PMDModel::read(const char *file, BulletPhysics *bullet, SystemTexture *syst
       return false;
    }
 
+   /* PMX: everything is in the file itself */
+   if (len > 4 && (MMDFiles_strtailmatch(file, ".pmx") || MMDFiles_strtailmatch(file, ".PMX"))) {
+      m_loadingProgressRate = 0.0f;
+      m_textureLoader.allocateTextureWorkArea(4096 * 4096 * 4);
+      ret = parsePMX(zf->getData(), (unsigned long)zf->getSize(), bullet, systex, dir);
+      zf->close();
+      delete zf;
+      free(dir);
+      if (ret)
+         ret = setupModel();
+      m_loadingProgressRate = 0.9f;
+      m_textureLoader.freeTextureWorkArea();
+      return ret;
+   }
+
    /* check if EXT information exists */
    extname = (char *)malloc(MMDFiles_strlen(file) + 5);
    strcpy(extname, file);

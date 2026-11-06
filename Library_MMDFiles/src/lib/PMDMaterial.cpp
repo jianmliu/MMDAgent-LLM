@@ -341,6 +341,12 @@ unsigned char PMDMaterial::getToonID()
    return m_toonID;
 }
 
+/* PMDMaterial::setToonID: set toon index */
+void PMDMaterial::setToonID(unsigned char id)
+{
+   m_toonID = id;
+}
+
 /* PMDMaterial::getEdgeFlag: get edge flag */
 bool PMDMaterial::getEdgeFlag()
 {

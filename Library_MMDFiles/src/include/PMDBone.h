@@ -151,6 +151,9 @@ public:
    /* setName: set bone name */
    void setName(const char *name);
 
+   /* setLimitAngleX: mark this bone as bendable about X only in IK (knees) */
+   void setLimitAngleX(bool flag);
+
    /* getType: get bone type */
    unsigned char getType();
 

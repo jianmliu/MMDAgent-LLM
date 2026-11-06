@@ -319,6 +319,12 @@ void PMDBone::setName(const char *name)
    m_name = MMDFiles_strdup(name);
 }
 
+/* PMDBone::setLimitAngleX: mark this bone as bendable about X only in IK (knees) */
+void PMDBone::setLimitAngleX(bool flag)
+{
+   m_limitAngleX = flag;
+}
+
 /* PMDBone::getType: get bone type */
 unsigned char PMDBone::getType()
 {
