@@ -64,14 +64,28 @@ if(APPLE)
       TARGET_OS_IPHONE=0
       GL_SILENCE_DEPRECATION=1
     )
-    set(MMDAGENT_LINK_OPTIONS
+    # The executable carries every in-tree static library whole (main/CMakeLists.txt), and the
+    # plugins only compile against them: their MMDAgent / GLFW calls bind to the executable's
+    # copy when it loads them. Linking the static libraries into each plugin as well gives every
+    # plugin its own copy (macOS binds each image to its own), with its own never-initialized
+    # GLFW state and duplicate Objective-C classes ("Class GLFWThread is implemented in both").
+    set(MMDAGENT_HOST_LINK_OPTIONS
         MMDAGENT
         -lstdc++
         "-framework Cocoa"
         "-framework OpenGL"
         "-framework IOKit"
     )
+    set(MMDAGENT_HOST_WHOLE_LIBRARIES MMDAGENT MMDFILES GLFW BulletPhysics LIBPNG FreeType)
+    set(MMDAGENT_LINK_OPTIONS
+        $<COMPILE_ONLY:MMDAGENT>
+        -lstdc++
+        "-undefined dynamic_lookup"
+    )
 else()
+    set(MMDAGENT_HOST_LINK_OPTIONS
+        MMDAGENT
+    )
     set(MMDAGENT_LINK_OPTIONS
         MMDAGENT
     )

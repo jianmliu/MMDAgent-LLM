@@ -49,7 +49,13 @@ target_compile_options(MMDAgent-EX PRIVATE
 )
 
 # link libraries to build executable
-target_link_libraries(MMDAgent-EX ${MMDAGENT_LINK_OPTIONS})
+target_link_libraries(MMDAgent-EX ${MMDAGENT_HOST_LINK_OPTIONS})
+if(MMDAGENT_HOST_WHOLE_LIBRARIES)
+    # keep every object of these libraries, so the plugins find what they call here
+    foreach(lib ${MMDAGENT_HOST_WHOLE_LIBRARIES})
+        target_link_options(MMDAgent-EX PRIVATE "LINKER:-force_load,$<TARGET_FILE:${lib}>")
+    endforeach()
+endif()
 
 # custom command to copy built binaries
 add_custom_command(
