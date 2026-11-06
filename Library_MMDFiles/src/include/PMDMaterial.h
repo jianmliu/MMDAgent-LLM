@@ -167,6 +167,9 @@ public:
    /* getToonID: get toon index */
    unsigned char getToonID();
 
+   /* setToonID: set toon index (0: none, n: toon texture slot n) */
+   void setToonID(unsigned char id);
+
    /*getFaceFlag: get face flag */
    bool getFaceFlag();
 

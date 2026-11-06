@@ -23,6 +23,20 @@ All documents are available at the [official site](https://mmdagent-ex.dev/).
 
 Windows / macOS / Linux / WSL
 
+## PMX models (this fork)
+
+`.pmx` models (PMX 2.0 / 2.1) load directly, without converting them to PMD + a PMXEditor CSV:
+`MODEL_ADD|alias|model.pmx`, or drop the file on the window. The loader
+(`Library_MMDFiles/src/lib/PMDModel_parsePMX.cpp`) fills the same structures as the PMD + CSV
+path, so a PMX behaves like its converted version: 4-bone and SDEF skinning, bone inheritance and
+process layers, IK (links limited to bending one way about X act as knees), vertex / bone / UV /
+material / group morphs, material flags and edge colors, full texture paths, own and shared toon
+textures, rigid bodies and joints.
+
+Not supported: additional UVs, QDEF (loaded as BDEF4), fixed and local bone axes, external
+parents, flip and impulse morphs, soft bodies; PMX 2.1 joint types other than spring 6DOF are
+loaded as spring 6DOF.
+
 ## Tutorial
 
 There is a [tutorial doc](https://mmdagent-ex.dev/docs/build/) that guides you how to build and run MMDAgent-EX.

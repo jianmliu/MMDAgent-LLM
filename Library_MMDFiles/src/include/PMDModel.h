@@ -237,6 +237,9 @@ private:
    /* parseExtCsv: load EXT information from csv file */
    bool parseExtCsv(const char *file, const char *dir);
 
+   /* parsePMX: initialize and load from PMX data memories */
+   bool parsePMX(const unsigned char *data, unsigned long size, BulletPhysics *bullet, SystemTexture *systex, const char *dir);
+
    /* setupModel: set up model work area after parses */
    bool setupModel();
 

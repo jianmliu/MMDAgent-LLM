@@ -42,6 +42,7 @@ set(SOURCES
     src/lib/PMDMaterialMorph.cpp
     src/lib/PMDModel.cpp
     src/lib/PMDModel_parse.cpp
+    src/lib/PMDModel_parsePMX.cpp
     src/lib/PMDModel_render.cpp
     src/lib/PMDModel_update.cpp
     src/lib/PMDRigidBody.cpp
