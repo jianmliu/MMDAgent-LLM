@@ -119,10 +119,11 @@ struct PMXReader {
    void vec(float *v, int n) {
       for (int i = 0; i < n; i++) v[i] = f32();
    }
-   /* count: non-negative 32-bit count */
-   int count() {
+   /* count: non-negative 32-bit count of items taking at least minBytes each; a count the
+      rest of the file cannot hold is an error, so a crafted file can't force huge allocations */
+   int count(size_t minBytes = 1) {
       int n = i32();
-      if (n < 0) { ok = false; return 0; }
+      if (n < 0 || (minBytes > 0 && (size_t)n > (size_t)(end - p) / minBytes)) { ok = false; return 0; }
       return n;
    }
    /* idx: signed index of 1, 2 or 4 bytes (-1 = none) */
@@ -274,7 +275,11 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
    sizeBone = globals[5];
    sizeMorph = globals[6];
    sizeRigid = globals[7];
-   (void)sizeMaterial;
+   if (r.encoding > 1 || numAdditionalUV > 4)
+      return false;
+   for (j = 2; j < 8; j++)
+      if (globals[j] != 1 && globals[j] != 2 && globals[j] != 4)
+         return false;
 
    /* names and comments */
    m_name = MMDFiles_strdup(r.text().c_str());
@@ -284,7 +289,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
    if (!r.ok) return false;
 
    /* vertices: positions, normals, uv, skinning, edge scale */
-   m_numVertex = (unsigned int)r.count();
+   m_numVertex = (unsigned int)r.count(33 + 16 * numAdditionalUV);
    if (!r.ok) return false;
    m_vertexList = (btVector3 *)MMDFiles_alignedmalloc(sizeof(btVector3) * m_numVertex, 16);
    m_normalList = (btVector3 *)MMDFiles_alignedmalloc(sizeof(btVector3) * m_numVertex, 16);
@@ -364,9 +369,10 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
          r.ok = false;
          break;
       }
-      /* unused slots are -1: point them at bone 0 (their weight is 0) */
+      /* unused slots are -1: point them at bone 0 (their weight is 0); indices past the bone
+         list are fixed once the bones are known */
       for (j = 0; j < 4; j++)
-         if (b[j] < 0) b[j] = 0;
+         if (b[j] < 0 || b[j] > 32767) b[j] = 0;
       m_bone1List[i] = (short)b[0];
       m_bone2List[i] = (short)b[1];
       m_boneWeight1[i] = w[0];
@@ -386,7 +392,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
    if (!r.ok) return false;
 
    /* surfaces */
-   m_numSurface = (unsigned int)r.count();
+   m_numSurface = (unsigned int)r.count(sizeVertex);
    if (!r.ok) return false;
 #ifndef OPENGL_USE_UNSIGNED_INT_FOR_INDICES
    if (m_numVertex > 65535)
@@ -406,14 +412,14 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
    /* texture paths */
    std::vector<std::string> textures;
    {
-      int n = r.count();
+      int n = r.count(4);
       for (int k = 0; k < n && r.ok; k++)
          textures.push_back(pathOf(r.text()));
    }
    if (!r.ok) return false;
 
    /* materials */
-   m_numMaterial = (unsigned int)r.count();
+   m_numMaterial = (unsigned int)r.count(70);
    if (!r.ok) return false;
    m_material = new PMDMaterial[m_numMaterial];
    {
@@ -454,7 +460,15 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
          fm.alpha = diffuse[3];
          fm.shiness = shiness;
          fm.edgeFlag = (flags & PMX_MAT_EDGE) ? 1 : 0;
-         fm.numSurfaceIndex = (unsigned int)r.i32();
+         {
+            int ns = r.i32();
+            /* the materials must split the surface list exactly (checked without overflow) */
+            if (ns < 0 || (unsigned int)ns > m_numSurface - surfaceFrom) {
+               r.ok = false;
+               break;
+            }
+            fm.numSurfaceIndex = (unsigned int)ns;
+         }
          /* toon: shared toon n is toon(n+1).bmp as in PMD; an own toon texture gets a slot below */
          if (sharedToon) {
             fm.toonID = (toon >= 0 && toon < SYSTEMTEXTURE_NUMFILES - 1) ? (unsigned char)toon : 0xff;
@@ -533,7 +547,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
    m_loadingProgressRate = 0.8f;
 
    /* bones */
-   std::vector<PMXBone> bones((size_t)r.count());
+   std::vector<PMXBone> bones((size_t)r.count(28));
    if (!r.ok) return false;
    if (bones.size() > 32767)
       return false;
@@ -567,7 +581,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
          b.ikTarget = r.idx(sizeBone);
          b.ikLoops = r.i32();
          b.ikLimit = r.f32();
-         n = r.count();
+         n = r.count(sizeBone + 1);
          for (int k = 0; k < n && r.ok; k++) {
             PMXIKLink l;
             l.bone = r.idx(sizeBone);
@@ -588,16 +602,35 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
       std::vector<bool> isTarget(bones.size(), false);
       std::vector<bool> kneeLike(bones.size(), false);
 
-      /* indices must point inside the bone list */
+      /* indices must point inside the bone list; anything else (including negatives other
+         than -1) means none */
       for (i = 0; i < bones.size(); i++) {
          PMXBone &b = bones[i];
-         if (b.parent >= nb) b.parent = -1;
-         if (b.tail >= nb) b.tail = -1;
-         if (b.inheritParent >= nb) b.inheritParent = -1;
-         if (b.ikTarget >= nb) b.ikTarget = -1;
+         if (b.parent < 0 || b.parent >= nb || b.parent == (int)i) b.parent = -1;
+         if (b.tail < 0 || b.tail >= nb) b.tail = -1;
+         if (b.inheritParent < 0 || b.inheritParent >= nb) b.inheritParent = -1;
+         if (b.ikTarget < 0 || b.ikTarget >= nb) b.ikTarget = -1;
          for (j = 0; j < b.ikLinks.size(); j++)
-            if (b.ikLinks[j].bone >= nb) b.ikLinks[j].bone = -1;
+            if (b.ikLinks[j].bone < 0 || b.ikLinks[j].bone >= nb) b.ikLinks[j].bone = -1;
       }
+      /* a parent cycle would make the bone ordering below loop forever */
+      for (i = 0; i < bones.size(); i++) {
+         int steps = 0;
+         for (int q = bones[i].parent; q >= 0; q = bones[q].parent)
+            if (++steps > nb)
+               return false;
+      }
+      /* vertex bone indices past the bone list point at bone 0 */
+      for (i = 0; i < m_numVertex; i++) {
+         if (m_bone1List[i] >= nb) m_bone1List[i] = 0;
+         if (m_bone2List[i] >= nb) m_bone2List[i] = 0;
+#ifdef MY_EXTRADEFORMATION
+         if (m_bone3List[i] >= nb) m_bone3List[i] = 0;
+         if (m_bone4List[i] >= nb) m_bone4List[i] = 0;
+#endif /* MY_EXTRADEFORMATION */
+      }
+      if (nb == 0 && m_numVertex > 0)
+         return false;
       /* bone types as PMXEditor's PMD export sets them */
       for (i = 0; i < bones.size(); i++) {
          if (bones[i].ikTarget < 0) continue;
@@ -729,7 +762,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
 
    /* morphs */
    {
-      int numMorph = r.count();
+      int numMorph = r.count(14);
       std::vector<std::string> morphNames;
       struct GroupEntry { unsigned short morph; int target; float rate; };
       std::vector<GroupEntry> groupEntries;
@@ -746,7 +779,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
          r.text(); /* English name */
          r.u8(); /* panel */
          type = r.u8();
-         n = r.count();
+         n = r.count(1);
          switch (type) {
          case 0: nGroup++; r.skip((size_t)n * (sizeMorph + 4)); break;
          case 1: nVertex++; r.skip((size_t)n * (sizeVertex + 12)); break;
@@ -776,7 +809,12 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
          r.text();
          r.u8();
          type = r.u8();
-         n = r.count();
+         n = r.count(1);
+         if (!r.ok) break;
+         /* the second pass must see the morphs the first one counted */
+         if ((type == 0 && m_numGroupMorph >= nGroup) || (type == 1 && m_numVertexMorph >= nVertex) || (type == 2 && m_numBoneMorph >= nBone)
+             || (type == 3 && m_numUVMorph >= nUV) || (type == 8 && m_numMaterialMorph >= nMaterial) || type > 10)
+            return false;
          if (type == 0) {
             PMDGroupMorph *m = &(m_groupMorphList[m_numGroupMorph++]);
             m->setup(name.c_str());
@@ -869,13 +907,13 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
 
    /* display frames (skip) */
    {
-      int n = r.count();
+      int n = r.count(9);
       for (int k = 0; k < n && r.ok; k++) {
          int m;
          r.text();
          r.text();
          r.u8();
-         m = r.count();
+         m = r.count(2);
          for (int e = 0; e < m && r.ok; e++) {
             unsigned char t = r.u8();
             r.idx(t ? sizeMorph : sizeBone);
@@ -896,8 +934,10 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
       for (i = 0; i < m_numBone; i++)
          m_orderedBoneList[i]->update();
 
-      n = r.count();
+      n = r.count(70);
       if (!r.ok) return false;
+      if (n > 0 && m_numBone == 0)
+         return false;
       if (n > 0) {
          m_numRigidBody = (unsigned int)n;
          m_rigidBodyList = (PMDRigidBody *)MMDFiles_alignedmalloc(sizeof(PMDRigidBody) * m_numRigidBody, 16);
@@ -951,7 +991,7 @@ bool PMDModel::parsePMX(const unsigned char *data, unsigned long size, BulletPhy
       }
 
       if (r.p < r.end) {
-         n = r.count();
+         n = r.count(107);
          if (!r.ok) return false;
          if (n > 0) {
             m_numConstraint = (unsigned int)n;
