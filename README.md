@@ -55,6 +55,15 @@ them again. MMDAgent-EX answers `MODEL_EVENT_FREEZEPHYSICS|(alias)|(pattern)|(co
 Useful for dense cloth nets (skirts of hundreds of jointed bodies) that never settle in
 MMDAgent-EX's Bullet setup and shake. Rigid body names now come from the model (PMD and PMX).
 
+## Plugins on macOS (this fork)
+
+On macOS the plugins no longer carry their own copy of the engine libraries (MMDAgent, MMDFiles,
+GLFW, Bullet, libpng, FreeType): the executable links them whole and the plugins use its copy
+when it loads them. Before, each plugin had a private copy, with GLFW state that was never
+initialized and Objective-C classes registered twice ("Class GLFWThread is implemented in both
+... may cause spurious casting failures and mysterious crashes"); each plugin was also about
+2.8 MB larger. Other platforms are unchanged.
+
 ## Tutorial
 
 There is a [tutorial doc](https://mmdagent-ex.dev/docs/build/) that guides you how to build and run MMDAgent-EX.
