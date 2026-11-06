@@ -65,6 +65,10 @@ void PMDMaterial::initialize()
 
    m_name = NULL;
 
+   m_hasTint = false;
+   for (i = 0; i < 3; i++)
+      m_tint[i] = 1.0f;
+
    for (i = 0; i < 3; i++) {
       m_diffuse[i] = 0.0f;
       m_ambient[i] = 0.0f;
@@ -275,7 +279,7 @@ void PMDMaterial::copyDiffuse(float *c)
    int i;
 
    for (i = 0; i < 3; i++)
-      c[i] = m_diffuse[i] * m_morphParamMul.diffuse[i] + m_morphParamAdd.diffuse[i];
+      c[i] = (m_diffuse[i] * m_morphParamMul.diffuse[i] + m_morphParamAdd.diffuse[i]) * m_tint[i];
 }
 
 /* PMDMaterial::copyAvgcol: get average colors of diffuse and ambient */
@@ -287,6 +291,15 @@ void PMDMaterial::copyAvgcol(float *c)
       c[i] = m_diffuse[i] * m_morphParamMul.diffuse[i] + m_morphParamAdd.diffuse[i];
       c[i] = c[i] * 0.5f + m_ambient[i] * m_morphParamMul.ambient[i] + m_morphParamAdd.ambient[i];
    }
+   if (m_hasTint) {
+      /* a tinted material shows the tint itself: a toon color above white (common, e.g.
+         diffuse 1 + ambient 0.75) is brought down to white first, else light tints wash out */
+      float m = c[0];
+      if (c[1] > m) m = c[1];
+      if (c[2] > m) m = c[2];
+      for (i = 0; i < 3; i++)
+         c[i] = (m > 1.0f ? c[i] / m : c[i]) * m_tint[i];
+   }
 }
 
 /* PMDMaterial::copyAmbient: get ambient colors */
@@ -295,7 +308,7 @@ void PMDMaterial::copyAmbient(float *c)
    int i;
 
    for (i = 0; i < 3; i++)
-      c[i] = m_ambient[i] * m_morphParamMul.ambient[i] + m_morphParamAdd.ambient[i];
+      c[i] = (m_ambient[i] * m_morphParamMul.ambient[i] + m_morphParamAdd.ambient[i]) * m_tint[i];
 }
 
 /* PMDMaterial::copySpecular: get specular colors */
@@ -339,6 +352,19 @@ unsigned int PMDMaterial::getNumSurface()
 unsigned char PMDMaterial::getToonID()
 {
    return m_toonID;
+}
+
+/* PMDMaterial::setTint: multiply the material color by rgb from now on */
+void PMDMaterial::setTint(const float *rgb)
+{
+   int i;
+
+   m_hasTint = false;
+   for (i = 0; i < 3; i++) {
+      m_tint[i] = rgb ? rgb[i] : 1.0f;
+      if (m_tint[i] != 1.0f)
+         m_hasTint = true;
+   }
 }
 
 /* PMDMaterial::setToonID: set toon index */

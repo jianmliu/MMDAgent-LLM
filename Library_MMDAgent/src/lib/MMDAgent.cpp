@@ -5888,6 +5888,36 @@ void MMDAgent::procReceivedMessage(const char *type, const char *value)
             sendMessage(m_moduleId, MMDAGENT_EVENT_MODELBINDFACE, "%s|%s|%s", argv[0], argv[3], argv[4]);
          }
       }
+   } else if (MMDAgent_strequal(type, MMDAGENT_COMMAND_MODELMATERIALCOLOR)) {
+      // MODEL_MATERIALCOLOR|(model alias)|(material name, or * for all)|r,g,b
+      // multiplies the material color from now on; 1,1,1 removes it
+      float rgb[3];
+      char *buf, *p, *save;
+      int k, id, n;
+      sendLogString(m_moduleId, MLOG_MESSAGE_CAPTURED, "%s|%s", type, value);
+      if (num != 3) {
+         sendLogString(m_moduleId, MLOG_ERROR, "%s: number of arguments should be 3.", type);
+         return;
+      }
+      id = findModelAlias(argv[0]);
+      if (id < 0) {
+         sendLogString(m_moduleId, MLOG_ERROR, "%s: model %s not found.", type, argv[0]);
+         return;
+      }
+      buf = MMDAgent_strdup(argv[2]);
+      for (k = 0, p = MMDAgent_strtok(buf, ",", &save); p && k < 3; p = MMDAgent_strtok(NULL, ",", &save))
+         rgb[k++] = MMDAgent_str2float(p);
+      free(buf);
+      if (k != 3) {
+         sendLogString(m_moduleId, MLOG_ERROR, "%s: %s is not r,g,b.", type, argv[2]);
+         return;
+      }
+      n = m_model[id].getPMDModel()->setMaterialTint(argv[1], rgb);
+      if (n == 0) {
+         sendLogString(m_moduleId, MLOG_WARNING, "%s: no material %s in model %s.", type, argv[1], argv[0]);
+         return;
+      }
+      sendMessage(m_moduleId, MMDAGENT_EVENT_MODELMATERIALCOLOR, "%s|%s", argv[0], argv[1]);
    } else if (MMDAgent_strequal(type, MMDAGENT_COMMAND_MODELUNBINDBONE)) {
       // MODEL_UNBINDBONE|(model alias)|(bone name)
       sendLogString(m_moduleId, MLOG_MESSAGE_CAPTURED, "%s|%s", type, value);
