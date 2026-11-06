@@ -109,6 +109,9 @@ private:
 
    PMDMaterialMorphElem m_morphParamMul;  /* material morphing parameters (multiply) */
    PMDMaterialMorphElem m_morphParamAdd;  /* material morphing parameters (add) */
+
+   bool m_hasTint;  /* true when a tint is set */
+   float m_tint[3]; /* persistent color multiplier set at run time (MODEL_MATERIALCOLOR) */
    float m_morphedEdgeColor[4];
 
    /* initialize: initialize material */
@@ -169,6 +172,9 @@ public:
 
    /* setToonID: set toon index (0: none, n: toon texture slot n) */
    void setToonID(unsigned char id);
+
+   /* setTint: multiply the material color by rgb from now on; NULL or white removes it */
+   void setTint(const float *rgb);
 
    /*getFaceFlag: get face flag */
    bool getFaceFlag();

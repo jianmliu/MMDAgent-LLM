@@ -284,6 +284,9 @@ public:
    /* getMaterialMorph: find material morph data by name */
    PMDMaterialMorph *getMaterialMorph(const char *name);
 
+   /* setMaterialTint: tint the materials named name ("*" = all); returns how many matched */
+   int setMaterialTint(const char *name, const float *rgb);
+
    /* getGroupMorph: find group morph data by name */
    PMDGroupMorph *getGroupMorph(const char *name);
 

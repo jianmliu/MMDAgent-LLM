@@ -37,6 +37,15 @@ Not supported: additional UVs, QDEF (loaded as BDEF4), fixed and local bone axes
 parents, flip and impulse morphs, soft bodies; PMX 2.1 joint types other than spring 6DOF are
 loaded as spring 6DOF.
 
+## Material colors at run time (this fork)
+
+`MODEL_MATERIALCOLOR|(model alias)|(material name, or * for all)|r,g,b` multiplies a material's
+color from now on (until the model is reloaded); `1,1,1` removes it. MMDAgent-EX answers with
+`MODEL_EVENT_MATERIALCOLOR|(model alias)|(material name)`, or logs a warning when no material has
+that name. In toon shading the tint is the color shown: a material lit brighter than white
+(diffuse / 2 + ambient above 1) is brought down to white first. Like a multiply material morph,
+it only recolors light textures; dark texels stay dark.
+
 ## Tutorial
 
 There is a [tutorial doc](https://mmdagent-ex.dev/docs/build/) that guides you how to build and run MMDAgent-EX.

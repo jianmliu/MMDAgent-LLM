@@ -430,6 +430,21 @@ bool PMDModel::read(const char *file, BulletPhysics *bullet, SystemTexture *syst
    return true;
 }
 
+/* PMDModel::setMaterialTint: tint the materials named name ("*" = all); returns how many matched */
+int PMDModel::setMaterialTint(const char *name, const float *rgb)
+{
+   unsigned int i;
+   int n = 0;
+
+   for (i = 0; i < m_numMaterial; i++) {
+      if (MMDFiles_strequal(name, "*") || MMDFiles_strequal(m_material[i].getName(), name)) {
+         m_material[i].setTint(rgb);
+         n++;
+      }
+   }
+   return n;
+}
+
 /* PMDModel::load: load from file name */
 bool PMDModel::load(const char *file, BulletPhysics *bullet, SystemTexture *systex)
 {
