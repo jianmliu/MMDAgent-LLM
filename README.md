@@ -74,6 +74,22 @@ MMDAgent-EX's Bullet setup and shake. Rigid body names now come from the model (
   `Plugin_Remote_DenyCommands=...` in the .mdf, or `Plugin_Remote_DenyCommands=NONE` to accept
   everything as before. Lines of 2048 bytes or more are ignored.
 
+## Companion mode (this fork)
+
+When an app drives MMDAgent-EX (a desktop companion, a kiosk), set `companion_mode=true` in the
+content .mdf. MMDAgent-EX then leaves the content-browser UI out and refuses what would leave or
+change the content from its window:
+
+- no tab bar (home / readme / bookmark / history / menu) and no red "PMX" mark;
+- Esc does not quit (close the window to quit), Del does not delete a model, dropped files are
+  ignored, and the keys that reload (R), browse (O), show history (H), update (!) or open other
+  programs (e, E, D, Ctrl+V) do nothing;
+- the menu (`/`) keeps the window, view and camera items; browsing content, Home, reload, system
+  update and deleting bookmarks or caches are greyed out, and the bookmark page is gone.
+
+Other keys (f fullscreen, t transparent window, s top indicator, camera keys...) work as usual.
+`show_fps=false` hides the top-left indicator. Without `companion_mode` nothing changes.
+
 ## Plugins on macOS (this fork)
 
 On macOS the plugins no longer carry their own copy of the engine libraries (MMDAgent, MMDFiles,

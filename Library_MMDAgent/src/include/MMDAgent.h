@@ -616,6 +616,9 @@ public:
    /* getTabbar: return tabbar */
    Tabbar *getTabbar();
 
+   /* getCompanionMode: true when an app drives MMDAgent-EX (companion_mode=true) */
+   bool getCompanionMode();
+
    /* setButtonsInDir: set buttons in dir */
    void setButtonsInDir(const char *dir);
 

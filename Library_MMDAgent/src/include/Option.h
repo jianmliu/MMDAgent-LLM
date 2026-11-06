@@ -260,6 +260,11 @@
 #define OPTION_SHOWBUTTON_STR "show_button"
 #define OPTION_SHOWBUTTON_DEF true
 
+/* companion mode (this fork): an app drives MMDAgent-EX, so hide the content browser UI
+   (tab bar, PMX mark) and refuse what would leave or change it from the window */
+#define OPTION_COMPANIONMODE_STR "companion_mode"
+#define OPTION_COMPANIONMODE_DEF false
+
 #define OPTION_DOPPELSHADOW_STR "doppel_shadow"
 #define OPTION_DOPPELSHADOW_DEF false
 
@@ -402,6 +407,7 @@ private:
 
    /* button */
    bool m_showButton;
+   bool m_companionMode;
 
    /* doppel shadow effect */
    bool m_useDoppelShadow;
@@ -681,6 +687,12 @@ public:
 
    /* setShowButton: set show button flag */
    void setShowButton(bool b);
+
+   /* getCompanionMode: get companion mode flag */
+   bool getCompanionMode();
+
+   /* setCompanionMode: set companion mode flag */
+   void setCompanionMode(bool b);
 
    /* getUseDoppelShadow: get use of doppel shadow */
    bool getUseDoppelShadow();

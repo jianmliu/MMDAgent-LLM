@@ -259,9 +259,13 @@ bool KeyHandler::processKeyMessage(int key, int action)
    if (action == GLFW_PRESS) {
       switch (key) {
       case GLFW_KEY_DEL:
-         m_mmdagent->procDeleteModelMessage();
+         if (m_mmdagent->getCompanionMode() == false)
+            m_mmdagent->procDeleteModelMessage();
          break;
       case GLFW_KEY_ESC:
+         /* companion mode: Esc does not quit (close the window to quit) */
+         if (m_mmdagent->getCompanionMode())
+            break;
          return false;
          break;
       case GLFW_KEY_LEFT:
@@ -300,7 +304,8 @@ bool KeyHandler::processKeyMessage(int key, int action)
          break;
 #ifdef _WIN32
       case GLFW_KEY_INSERT:
-         getClipboardContentURL();
+         if (m_mmdagent->getCompanionMode() == false)
+            getClipboardContentURL();
          break;
 #endif /* _WIN32 */
       default:
@@ -368,6 +373,18 @@ bool KeyHandler::processCharMessage(int key, int action)
 
    if (action == GLFW_RELEASE)
       return true;
+
+   /* companion mode: no keys that open other programs or content, reload, update or show history */
+   if (m_mmdagent->getCompanionMode()) {
+      switch (key) {
+      case 'D': case 'e': case 'E': case 'O': case 'R': case 'H': case '!':
+      case 8: /* ctrl+h */
+      case 22: /* ctrl+v */
+         return true;
+      default:
+         break;
+      }
+   }
 
    switch (key) {
    case 'd':
