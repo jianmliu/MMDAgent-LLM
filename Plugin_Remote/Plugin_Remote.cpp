@@ -79,6 +79,12 @@
 // configuration key for enable audio paththrough at local lipsync
 #define PLUGIN_REMOTE_CONFIG_ENABLE_LOCAL_PASSTHROUGH    "Plugin_Remote_EnableLocalPassthrough"
 
+// configuration key for commands not accepted from the other end, comma-separated ("NONE": accept all)
+#define PLUGIN_REMOTE_CONFIG_DENY_COMMANDS "Plugin_Remote_DenyCommands"
+// by default, refuse commands that open other content, change settings, write or upload files or
+// load scripts: anything on this machine that can reach the port could otherwise send them
+#define PLUGIN_REMOTE_DEFAULT_DENY_COMMANDS "OPEN_CONTENT,KEYVALUE_SET,LOG_START,LOG_UPLOAD,AVATAR_LOGSAVE_START,RECOG_RECORD_START,RECOG_LOGLOC,MOTIONCAPTURE_START,NETWORK_GET,FST_LOAD,SUBFST_START,SUBFST_START_IF,PLUGIN_ENABLE,PLUGIN_DISABLE"
+
 #define POCO_NO_AUTOMATIC_LIBS
 #ifdef _WIN32
 /* use static library built with MMDAgent-EX */
@@ -109,6 +115,8 @@
 #include <samplerate.h>
 #include <random>
 #include <mutex>
+#include <string>
+#include <vector>
 
 #define SOCKET_MAXBUFLEN 8192
 
@@ -188,6 +196,8 @@ private:
 
    int m_len;
    int m_bp;
+
+   std::vector<std::string> m_denyCommands;   // commands not accepted from the other end
 
    char m_statusString[MMDAGENT_MAXBUFLEN];
    bool m_statusStringUpdated;
@@ -322,9 +332,16 @@ private:
             m_clientHostName[c] = MMDAgent_strdup(m_net->getClientHostName());
             m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_CONNECTED, "%s", m_clientHostName[c]);
          }
+      } else if (m_webSocketMode && m_ws_host) {
+         // tell the server too: after a reconnect it gets no PLUGIN_EVENT_ENABLE|Remote,
+         // and the models it added before are still loaded
+         m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_CONNECTED, "%s", m_ws_host);
       }
-      if (m_avatar[c] == NULL)
+      bool newAvatar = false;
+      if (m_avatar[c] == NULL) {
          m_avatar[c] = new Avatar();
+         newAvatar = true;
+      }
 
       KeyValue* k = m_mmdagent->getKeyValue();
 
@@ -354,7 +371,13 @@ private:
             }
          }
       }
-      m_avatar[c]->setup(m_mmdagent, m_id, local_lipsync, local_lipsync ? local_passthrough : true);
+      if (newAvatar) {
+         m_avatar[c]->setup(m_mmdagent, m_id, local_lipsync, local_lipsync ? local_passthrough : true);
+      } else {
+         // reconnected: reuse the Avatar (setup() would restart its audio thread, see removeClient)
+         // and start from the same audio mode a new one has
+         m_avatar[c]->setStreamingSoundDataFlag(true);
+      }
 
       if (local_lipsync == true) {
          if (m_mmdagent->findModelAlias("0") >= 0) {
@@ -394,13 +417,16 @@ private:
             free(m_clientHostName[c]);
             m_clientHostName[c] = NULL;
          }
+      } else if (m_webSocketMode && m_ws_host) {
+         m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_DISCONNECTED, "%s", m_ws_host);
       }
       m_sd[c] = -1;
       m_processing[c] = false;
-      if (m_avatar[c]) {
-         delete m_avatar[c];
-         m_avatar[c] = NULL;
-      }
+      // Keep the Avatar for the next connection on this slot: deleting it stops its audio
+      // thread with glfwDestroyThread(), which on macOS is SIGKILL and ends the whole
+      // process, and the main thread may be inside Avatar::update() at this moment.
+      if (m_avatar[c])
+         m_avatar[c]->setEnableFlag(false);
 
       m_validClientNum--;
    }
@@ -460,6 +486,18 @@ public:
       }
 
       m_retryCount = MMDAgent_str2int(mmdagent->getKeyValue()->getString(PLUGIN_REMOTE_CONFIG_RETRY_COUNT, "0"));
+
+      m_denyCommands.clear();
+      {
+         const char *deny = mmdagent->getKeyValue()->getString(PLUGIN_REMOTE_CONFIG_DENY_COMMANDS, PLUGIN_REMOTE_DEFAULT_DENY_COMMANDS);
+         if (deny && MMDAgent_strequal(deny, "NONE") == false) {
+            char *list = MMDAgent_strdup(deny);
+            char *p, *save;
+            for (p = MMDAgent_strtok(list, ", ", &save); p; p = MMDAgent_strtok(NULL, ", ", &save))
+               m_denyCommands.push_back(p);
+            free(list);
+         }
+      }
 
       m_thread = new Thread;
       m_thread->setup();
@@ -529,6 +567,29 @@ public:
       // avoid queuing when not connected
       if (is_active() == true && m_validClientNum > 0)
          m_thread->enqueueBuffer(1, str, NULL);
+   }
+
+   // true when a received command line may be passed on to MMDAgent
+   bool acceptCommand(const char *line)
+   {
+      char type[MMDAGENT_MAXBUFLEN];
+      int i;
+
+      // MMDAgent's message queue copies type and arguments into buffers of this size
+      if (MMDAgent_strlen(line) >= MMDAGENT_MAXBUFLEN) {
+         m_mmdagent->sendLogString(m_id, MLOG_WARNING, "ignored a message longer than %d bytes", MMDAGENT_MAXBUFLEN - 1);
+         return false;
+      }
+      for (i = 0; line[i] != '\0' && line[i] != '|' && line[i] != '\r' && line[i] != '\n'; i++)
+         type[i] = line[i];
+      type[i] = '\0';
+      for (const std::string &d : m_denyCommands) {
+         if (MMDAgent_strequal(type, d.c_str())) {
+            m_mmdagent->sendLogString(m_id, MLOG_WARNING, "%s is not accepted from remote (%s)", type, PLUGIN_REMOTE_CONFIG_DENY_COMMANDS);
+            return false;
+         }
+      }
+      return true;
    }
 
    void processMessageData(int avatarId, char buff[])
@@ -626,17 +687,19 @@ public:
             // if avatar controll message, pass it to avatar module
             if (MMDAgent_strheadmatch(lp, "__AV_MESSAGE,")) {
                // pass raw message to message queue
-               char *p, *q, *psave;
-               strcpy(buff3, &lp[13]);
-               p = MMDAgent_strtok(buff3, "|", &psave);
-               q = MMDAgent_strtok(NULL, "\r\n", &psave);
-               // enqueue the received message to pass to MMDAgent
-               m_thread->enqueueBuffer(0, p, q);
+               if (acceptCommand(&lp[13])) {
+                  char *p, *q, *psave;
+                  strcpy(buff3, &lp[13]);
+                  p = MMDAgent_strtok(buff3, "|", &psave);
+                  q = MMDAgent_strtok(NULL, "\r\n", &psave);
+                  // enqueue the received message to pass to MMDAgent
+                  m_thread->enqueueBuffer(0, p, q);
+               }
             } else if (MMDAgent_strheadmatch(lp, "__AV")) {
                // protocol message other than SND, pass to Avatar class
                if (m_avatar[avatarId])
                   m_avatar[avatarId]->processMessage(lp);
-            } else {
+            } else if (acceptCommand(lp)) {
                // if does not have "__AV", just pass it to message queue as old Plugin_Remote
                char *p, *q, *psave;
                strcpy(buff3, lp);
@@ -675,6 +738,14 @@ public:
       m_ws_dir = MMDAgent_strdup(m_mmdagent->getKeyValue()->getString(PLUGIN_REMOTE_WEBSOCKET_DIR, "/"));
       sendLog(MLOG_STATUS, "%s %s:%d%s", logheader, m_ws_host, m_ws_portnum, m_ws_dir);
 
+      // drop the previous connection and anything left of its last message
+      if (*ws) {
+         delete *ws;
+         *ws = NULL;
+      }
+      m_bp = 0;
+      m_len = 0;
+
       retry_count = 0;
       connected = false;
       while (is_active()) {
@@ -693,7 +764,9 @@ public:
                Poco::Net::HTTPClientSession session(m_ws_host, m_ws_portnum);
                *ws = new Poco::Net::WebSocket(session, request, response);
             }
-            (*ws)->setReceiveTimeout(Poco::Timespan(0, 10));
+            // frames are only read once select() or available() says data is there; a frame
+            // that arrives in pieces needs time for the rest (10 us made that a disconnect)
+            (*ws)->setReceiveTimeout(Poco::Timespan(5, 0));
             connected = true;
             break;
          }
@@ -812,7 +885,7 @@ public:
       Poco::Net::Socket::SocketList readList;
       Poco::Net::Socket::SocketList writeList;
       Poco::Net::Socket::SocketList exceptList;
-      Poco::Net::WebSocket *ws;
+      Poco::Net::WebSocket *ws = NULL;
       int ws_c = 0;
 
       if (m_active == false)
@@ -886,13 +959,21 @@ public:
 
                readList.push_back(*ws);
 
+               // Frames that came in with the handshake response (e.g. the server's first
+               // commands, sent right on connect) already sit in Poco's buffer, where select()
+               // on the socket can't see them: they would wait for the next packet.
+               bool readable = ws->available() > 0;
                Poco::Timespan timeout(0, 10000);
-               if (Poco::Net::Socket::select(readList, writeList, exceptList, timeout) > 0) {
-                  if (std::find(readList.begin(), readList.end(), *ws) != readList.end()) {
+               if (readable || Poco::Net::Socket::select(readList, writeList, exceptList, timeout) > 0) {
+                  if (readable || std::find(readList.begin(), readList.end(), *ws) != readList.end()) {
                      int flags = 0;
                      {
                         std::lock_guard<std::mutex> lock(m_stdmutex);
                         m_len = ws->receiveFrame(&(buff[m_bp]), SOCKET_MAXBUFLEN - 1 - m_bp, flags);
+                     }
+                     if ((flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
+                        // the server closed the connection: its status code is not a message
+                        m_len = 0;
                      }
                      if ((flags & Poco::Net::WebSocket::FRAME_OP_BITMASK) == Poco::Net::WebSocket::FRAME_OP_PING) {
                         ws->sendFrame(&(buff[m_bp]), m_len == 0 ? 1 : m_len, Poco::Net::WebSocket::FRAME_OP_PONG | Poco::Net::WebSocket::FRAME_FLAG_FIN);
@@ -1002,8 +1083,9 @@ public:
             }
          }
       }
-      if (m_webSocketMode) {
+      if (m_webSocketMode && ws) {
          ws->close();
+         delete ws;
       }
       return true;
    }

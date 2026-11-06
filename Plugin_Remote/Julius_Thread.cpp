@@ -56,6 +56,7 @@
 
 /* headers */
 
+#include <mutex> /* before julius, whose abs() macro breaks <chrono> */
 #include "MMDAgent.h"
 #include "julius/juliuslib.h"
 #include "Julius_Record.h"
