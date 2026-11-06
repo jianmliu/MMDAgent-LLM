@@ -55,6 +55,24 @@ them again. MMDAgent-EX answers `MODEL_EVENT_FREEZEPHYSICS|(alias)|(pattern)|(co
 Useful for dense cloth nets (skirts of hundreds of jointed bodies) that never settle in
 MMDAgent-EX's Bullet setup and shake. Rigid body names now come from the model (PMD and PMX).
 
+## Remote control over WebSocket (this fork)
+
+- MMDAgent-EX keeps running when the WebSocket server goes away and reconnects to it (as many
+  times as `Plugin_Remote_RetryCount` allows per outage). Before, losing the connection ended the
+  process on macOS. Models, motions and the avatar's audio thread stay as they were; avatar
+  control is switched off until the server sends `__AV_START` again.
+- On every connection, including reconnections, the server receives
+  `REMOTE_EVENT_CONNECTED|(host)`. After a reconnection there is no `PLUGIN_EVENT_ENABLE|Remote`,
+  and the models added before are still loaded, so a server should take this event as its start
+  and replace its models (`MODEL_CHANGE`) rather than add them again.
+- Commands that open other content, change settings, write or upload files, load scripts or
+  switch plugins are not accepted from the other end by default: `OPEN_CONTENT`, `KEYVALUE_SET`,
+  `LOG_START`, `LOG_UPLOAD`, `AVATAR_LOGSAVE_START`, `RECOG_RECORD_START`, `RECOG_LOGLOC`,
+  `MOTIONCAPTURE_START`, `NETWORK_GET`, `FST_LOAD`, `SUBFST_START`, `SUBFST_START_IF`,
+  `PLUGIN_ENABLE`, `PLUGIN_DISABLE`. Set your own comma-separated list with
+  `Plugin_Remote_DenyCommands=...` in the .mdf, or `Plugin_Remote_DenyCommands=NONE` to accept
+  everything as before. Lines of 2048 bytes or more are ignored.
+
 ## Plugins on macOS (this fork)
 
 On macOS the plugins no longer carry their own copy of the engine libraries (MMDAgent, MMDFiles,

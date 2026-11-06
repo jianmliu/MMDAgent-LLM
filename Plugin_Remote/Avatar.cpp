@@ -16,6 +16,7 @@
 
 /* headers */
 
+#include <mutex> /* before julius, whose abs() macro breaks <chrono> */
 #include "MMDAgent.h"
 #include "julius/juliuslib.h"
 #include "Julius_Record.h"
@@ -176,6 +177,8 @@ bool Avatar::assignModel(const char *alias)
    if (m_mmdagent == NULL)
       return false;
 
+   std::lock_guard<std::recursive_mutex> guard(m_avatarMutex);
+
    /* store specified model alias even if failed */
    if (alias) {
       if (m_name)
@@ -294,9 +297,13 @@ bool Avatar::processMessage(const char *AVString)
    if (AVString == NULL)
       return false;
 
-   if (m_obj) {
+   std::lock_guard<std::recursive_mutex> guard(m_avatarMutex);
+
+   // unlock the object that was locked here, even if assignModel() switches m_obj
+   PMDObject *lockedObj = m_obj;
+   if (lockedObj) {
       // detect model change and re-assign if model change has occured
-      m_obj->lock();
+      lockedObj->lock();
       if (m_pmd != m_obj->getPMDModel())
          assignModel(NULL);
    } else {
@@ -334,19 +341,19 @@ bool Avatar::processMessage(const char *AVString)
 
    if (MMDAgent_strequal(m_messageBuf[0], "__AV_START")) {
       setEnableFlagInternal(true);
-      if (m_obj) m_obj->unlock();
+      if (lockedObj) lockedObj->unlock();
       return true;
    } else if (MMDAgent_strequal(m_messageBuf[0], "__AV_END")) {
       setEnableFlagInternal(false);
-      if (m_obj) m_obj->unlock();
+      if (lockedObj) lockedObj->unlock();
       return true;
    } else if (MMDAgent_strequal(m_messageBuf[0], "__AV_SETMODEL")) {
       if (n != 2) {
-         if (m_obj) m_obj->unlock();
+         if (lockedObj) lockedObj->unlock();
          return false;
       }
       bool ret = assignModel(m_messageBuf[1]);
-      if (m_obj) m_obj->unlock();
+      if (lockedObj) lockedObj->unlock();
       return ret;
    } else if (MMDAgent_strequal(m_messageBuf[0], "__AV_EXMORPH") && m_enable == true) {
       char *p2, *p3, *save2;
@@ -413,7 +420,7 @@ bool Avatar::processMessage(const char *AVString)
 
    /* reset all faces except lip (?) */
 
-   if (m_obj) m_obj->unlock();
+   if (lockedObj) lockedObj->unlock();
 
    return true;
 }
@@ -424,9 +431,13 @@ void Avatar::update(float deltaFrame)
    float rate;
    float blendRate;
 
-   if (m_obj) {
+   std::lock_guard<std::recursive_mutex> guard(m_avatarMutex);
+
+   // unlock the object that was locked here, even if assignModel() switches m_obj
+   PMDObject *lockedObj = m_obj;
+   if (lockedObj) {
       // detect model change and re-assign if model change has occured
-      m_obj->lock();
+      lockedObj->lock();
       if (m_pmd != m_obj->getPMDModel())
          assignModel(NULL);
    } else {
@@ -484,14 +495,14 @@ void Avatar::update(float deltaFrame)
             m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_AVATARCONTROL, "DISABLED");
             m_issueLeaveEvent = false;
          }
-         if (m_obj) m_obj->unlock();
+         if (lockedObj) lockedObj->unlock();
          return;
       }
       blendRate = m_leavingFrameLeft / LEAVINGFRAMES;
    }
 
    if (m_pmd == NULL) {
-      if (m_obj) m_obj->unlock();
+      if (lockedObj) lockedObj->unlock();
       return;
    }
 
@@ -568,7 +579,7 @@ void Avatar::update(float deltaFrame)
       }
    }
 
-   if (m_obj) m_obj->unlock();
+   if (lockedObj) lockedObj->unlock();
 }
 
 // Avatar::setEnableFlagInternal: set enable flag internally
@@ -596,6 +607,8 @@ void Avatar::setEnableFlagInternal(bool flag)
 // Avatar::setEnableFlag: set enable flag
 void Avatar::setEnableFlag(bool flag)
 {
+   std::lock_guard<std::recursive_mutex> guard(m_avatarMutex);
+
    if (flag == true) {
       if (m_enable == false) {
          setEnableFlagInternal(flag);

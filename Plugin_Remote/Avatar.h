@@ -16,6 +16,7 @@
 
 // Avatar mode handling client
 
+#include <mutex>
 #include "MouseQueue.h"
 #include "MorphControl.h"
 
@@ -91,6 +92,10 @@ private:
 
    MMDAgent *m_mmdagent;      // MMDAgent class
    int m_id;                  // Module ID for messaging/logging
+
+   // processMessage() runs on the network thread, update() on the main thread:
+   // they share the model binding and morph controllers, so they take turns
+   std::recursive_mutex m_avatarMutex;
 
    char *m_name;
    PMDObject *m_obj;
