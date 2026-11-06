@@ -333,10 +333,6 @@ private:
             m_clientHostName[c] = MMDAgent_strdup(m_net->getClientHostName());
             m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_CONNECTED, "%s", m_clientHostName[c]);
          }
-      } else if (m_webSocketMode && m_ws_host) {
-         // tell the server too: after a reconnect it gets no PLUGIN_EVENT_ENABLE|Remote,
-         // and the models it added before are still loaded
-         m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_CONNECTED, "%s", m_ws_host);
       }
       bool newAvatar = false;
       if (m_avatar[c] == NULL) {
@@ -397,6 +393,13 @@ private:
 
       }
       m_validClientNum++;
+
+      if (m_net == NULL && m_webSocketMode && m_ws_host) {
+         // tell the server too: after a reconnect it gets no PLUGIN_EVENT_ENABLE|Remote, and the
+         // models it added before are still loaded. Sent after counting this client: the event
+         // reaches the other end through enqueueLogString(), which drops it while none is counted.
+         m_mmdagent->sendMessage(m_id, PLUGIN_EVENT_CONNECTED, "%s", m_ws_host);
+      }
 
       return c;
    }
