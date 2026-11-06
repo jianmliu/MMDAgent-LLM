@@ -5888,6 +5888,35 @@ void MMDAgent::procReceivedMessage(const char *type, const char *value)
             sendMessage(m_moduleId, MMDAGENT_EVENT_MODELBINDFACE, "%s|%s|%s", argv[0], argv[3], argv[4]);
          }
       }
+   } else if (MMDAgent_strequal(type, MMDAGENT_COMMAND_MODELFREEZEPHYSICS)) {
+      // MODEL_FREEZEPHYSICS|(model alias)|(rigid body name pattern, * = any)|ON or OFF
+      // ON holds the matching simulated bodies kinematic, following their bones
+      int id, n;
+      bool freeze;
+      sendLogString(m_moduleId, MLOG_MESSAGE_CAPTURED, "%s|%s", type, value);
+      if (num != 3) {
+         sendLogString(m_moduleId, MLOG_ERROR, "%s: number of arguments should be 3.", type);
+         return;
+      }
+      if (MMDAgent_strequal(argv[2], "ON")) {
+         freeze = true;
+      } else if (MMDAgent_strequal(argv[2], "OFF")) {
+         freeze = false;
+      } else {
+         sendLogString(m_moduleId, MLOG_ERROR, "%s: 3rd argument should be ON or OFF.", type);
+         return;
+      }
+      id = findModelAlias(argv[0]);
+      if (id < 0) {
+         sendLogString(m_moduleId, MLOG_ERROR, "%s: model %s not found.", type, argv[0]);
+         return;
+      }
+      n = m_model[id].getPMDModel()->freezeRigidBodies(argv[1], freeze);
+      if (n == 0) {
+         sendLogString(m_moduleId, MLOG_WARNING, "%s: no simulated rigid body matches %s in model %s.", type, argv[1], argv[0]);
+         return;
+      }
+      sendMessage(m_moduleId, MMDAGENT_EVENT_MODELFREEZEPHYSICS, "%s|%s|%d", argv[0], argv[1], n);
    } else if (MMDAgent_strequal(type, MMDAGENT_COMMAND_MODELMATERIALCOLOR)) {
       // MODEL_MATERIALCOLOR|(model alias)|(material name, or * for all)|r,g,b
       // multiplies the material color from now on; 1,1,1 removes it
