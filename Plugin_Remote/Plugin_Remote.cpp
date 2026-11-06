@@ -569,20 +569,22 @@ public:
          m_thread->enqueueBuffer(1, str, NULL);
    }
 
-   // true when a received command line may be passed on to MMDAgent
-   bool acceptCommand(const char *line)
+   // true when a received command line fits MMDAgent's message buffers
+   bool acceptLength(const char *line)
    {
-      char type[MMDAGENT_MAXBUFLEN];
-      int i;
-
       // MMDAgent's message queue copies type and arguments into buffers of this size
       if (MMDAgent_strlen(line) >= MMDAGENT_MAXBUFLEN) {
          m_mmdagent->sendLogString(m_id, MLOG_WARNING, "ignored a message longer than %d bytes", MMDAGENT_MAXBUFLEN - 1);
          return false;
       }
-      for (i = 0; line[i] != '\0' && line[i] != '|' && line[i] != '\r' && line[i] != '\n'; i++)
-         type[i] = line[i];
-      type[i] = '\0';
+      return true;
+   }
+
+   // true when a command type, as it will be enqueued, may be passed on to MMDAgent
+   bool acceptType(const char *type)
+   {
+      if (MMDAgent_strlen(type) <= 0)
+         return false;
       for (const std::string &d : m_denyCommands) {
          if (MMDAgent_strequal(type, d.c_str())) {
             m_mmdagent->sendLogString(m_id, MLOG_WARNING, "%s is not accepted from remote (%s)", type, PLUGIN_REMOTE_CONFIG_DENY_COMMANDS);
@@ -685,27 +687,30 @@ public:
                break;
             }
             // if avatar controll message, pass it to avatar module
-            if (MMDAgent_strheadmatch(lp, "__AV_MESSAGE,")) {
+            if (acceptLength(lp) == false) {
+               // dropped
+            } else if (MMDAgent_strheadmatch(lp, "__AV_MESSAGE,")) {
                // pass raw message to message queue
-               if (acceptCommand(&lp[13])) {
-                  char *p, *q, *psave;
-                  strcpy(buff3, &lp[13]);
-                  p = MMDAgent_strtok(buff3, "|", &psave);
-                  q = MMDAgent_strtok(NULL, "\r\n", &psave);
-                  // enqueue the received message to pass to MMDAgent
+               char *p, *q, *psave;
+               strcpy(buff3, &lp[13]);
+               p = MMDAgent_strtok(buff3, "|", &psave);
+               q = MMDAgent_strtok(NULL, "\r\n", &psave);
+               // enqueue the received message to pass to MMDAgent (check the type as tokenized:
+               // strtok skips leading '|', so "|OPEN_CONTENT|..." still yields OPEN_CONTENT)
+               if (acceptType(p))
                   m_thread->enqueueBuffer(0, p, q);
-               }
             } else if (MMDAgent_strheadmatch(lp, "__AV")) {
                // protocol message other than SND, pass to Avatar class
                if (m_avatar[avatarId])
                   m_avatar[avatarId]->processMessage(lp);
-            } else if (acceptCommand(lp)) {
+            } else {
                // if does not have "__AV", just pass it to message queue as old Plugin_Remote
                char *p, *q, *psave;
                strcpy(buff3, lp);
                p = MMDAgent_strtok(buff3, "|", &psave);
                q = MMDAgent_strtok(NULL, "\r\n", &psave);
-               m_thread->enqueueBuffer(0, p, q);
+               if (acceptType(p))
+                  m_thread->enqueueBuffer(0, p, q);
             }
             if (m_fpLog) {
                // log to file
