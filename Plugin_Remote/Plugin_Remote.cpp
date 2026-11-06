@@ -81,9 +81,10 @@
 
 // configuration key for commands not accepted from the other end, comma-separated ("NONE": accept all)
 #define PLUGIN_REMOTE_CONFIG_DENY_COMMANDS "Plugin_Remote_DenyCommands"
-// by default, refuse commands that open other content, change settings, write or upload files or
-// load scripts: anything on this machine that can reach the port could otherwise send them
-#define PLUGIN_REMOTE_DEFAULT_DENY_COMMANDS "OPEN_CONTENT,KEYVALUE_SET,LOG_START,LOG_UPLOAD,AVATAR_LOGSAVE_START,RECOG_RECORD_START,RECOG_LOGLOC,MOTIONCAPTURE_START,NETWORK_GET,FST_LOAD,SUBFST_START,SUBFST_START_IF,PLUGIN_ENABLE,PLUGIN_DISABLE"
+// by default, refuse commands that open other content, change settings, write or upload files,
+// load scripts, press keys or add buttons (whose clicks send any command): anything on this
+// machine that can reach the port could otherwise send them
+#define PLUGIN_REMOTE_DEFAULT_DENY_COMMANDS "OPEN_CONTENT,KEYVALUE_SET,LOG_START,LOG_UPLOAD,AVATAR_LOGSAVE_START,RECOG_RECORD_START,RECOG_LOGLOC,MOTIONCAPTURE_START,NETWORK_GET,FST_LOAD,SUBFST_START,SUBFST_START_IF,PLUGIN_ENABLE,PLUGIN_DISABLE,REMOTEKEY_CHAR,REMOTEKEY_DOWN,REMOTEKEY_UP,HOME_SET,HOME_CLEAR,BUTTON_ADD"
 
 #define POCO_NO_AUTOMATIC_LIBS
 #ifdef _WIN32
