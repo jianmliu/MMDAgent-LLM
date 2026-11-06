@@ -65,11 +65,12 @@ MMDAgent-EX's Bullet setup and shake. Rigid body names now come from the model (
   `REMOTE_EVENT_CONNECTED|(host)`. After a reconnection there is no `PLUGIN_EVENT_ENABLE|Remote`,
   and the models added before are still loaded, so a server should take this event as its start
   and replace its models (`MODEL_CHANGE`) rather than add them again.
-- Commands that open other content, change settings, write or upload files, load scripts or
-  switch plugins are not accepted from the other end by default: `OPEN_CONTENT`, `KEYVALUE_SET`,
+- Commands that open other content, change settings, write or upload files, load scripts,
+  switch plugins, press keys or add buttons are not accepted from the other end by default: `OPEN_CONTENT`, `KEYVALUE_SET`,
   `LOG_START`, `LOG_UPLOAD`, `AVATAR_LOGSAVE_START`, `RECOG_RECORD_START`, `RECOG_LOGLOC`,
   `MOTIONCAPTURE_START`, `NETWORK_GET`, `FST_LOAD`, `SUBFST_START`, `SUBFST_START_IF`,
-  `PLUGIN_ENABLE`, `PLUGIN_DISABLE`. Set your own comma-separated list with
+  `PLUGIN_ENABLE`, `PLUGIN_DISABLE`, `REMOTEKEY_CHAR`, `REMOTEKEY_DOWN`, `REMOTEKEY_UP`,
+  `HOME_SET`, `HOME_CLEAR`, `BUTTON_ADD`. Set your own comma-separated list with
   `Plugin_Remote_DenyCommands=...` in the .mdf, or `Plugin_Remote_DenyCommands=NONE` to accept
   everything as before. Lines of 2048 bytes or more are ignored.
 
