@@ -115,6 +115,9 @@ public:
    /* exitFullScreen: exit fullscreen */
    void exitFullScreen();
 
+   /* moveToDisplay: move window onto a display (by index if >= 0, else by size), return its index or -1 */
+   int moveToDisplay(int index, int width, int height);
+
    /* saveWindowPosition: save current window postion to file */
    void saveWindowPosition();
 

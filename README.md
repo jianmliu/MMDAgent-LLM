@@ -90,6 +90,18 @@ change the content from its window:
 Other keys (f fullscreen, t transparent window, s top indicator, camera keys...) work as usual.
 `show_fps=false` hides the top-left indicator. Without `companion_mode` nothing changes.
 
+## Full screen on a chosen display (this fork, macOS)
+
+`full_screen=true` goes full screen on the display the window opens on, normally the main one.
+To use another display (a small round HDMI screen, say), add `full_screen_display` to the .mdf:
+
+- `full_screen_display=720x720` picks the first display of that size, in points or in pixels;
+- `full_screen_display=1` picks that display by number (0 = the one with the menu bar).
+
+Before going full screen, at start or with the f key / [Window] menu, MMDAgent-EX moves its
+window onto that display. If no display matches it logs a warning and goes full screen where the
+window is. Other platforms ignore the key.
+
 ## Plugins on macOS (this fork)
 
 On macOS the plugins no longer carry their own copy of the engine libraries (MMDAgent, MMDFiles,

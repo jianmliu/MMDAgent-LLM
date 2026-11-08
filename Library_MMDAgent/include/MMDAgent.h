@@ -509,6 +509,9 @@ private:
    /* clear: free MMDAgent */
    void clear();
 
+   /* moveToFullScreenDisplay: move window onto the full_screen_display before going full screen */
+   void moveToFullScreenDisplay();
+
 public:
 
    /* MMDAgent: constructor */

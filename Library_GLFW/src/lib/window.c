@@ -822,6 +822,24 @@ GLFWAPI void GLFWAPIENTRY glfwDisableFullScreen( void )
     _glfwPlatformDisableFullScreen();
 }
 
+// Move the window onto a display before it goes full screen (macOS only, this fork).
+// index >= 0 picks that display, otherwise the first display whose size is width x height.
+// Returns the display index, or -1 when none matched (the window stays) or not supported.
+GLFWAPI int GLFWAPIENTRY glfwMoveWindowToDisplay( int index, int width, int height )
+{
+    // Is GLFW initialized?
+    if( !_glfwInitialized || !_glfwWin.opened )
+    {
+        return -1;
+    }
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+    return _glfwPlatformMoveWindowToDisplay(index, width, height);
+#else
+    return -1;
+#endif
+}
+
 GLFWAPI void GLFWAPIENTRY glfwGetRenderingSize( int *width, int *height)
 {
     // Is GLFW initialized?
