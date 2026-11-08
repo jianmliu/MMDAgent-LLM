@@ -1051,6 +1051,49 @@ void _glfwPlatformDisableFullScreen()
         [_glfwWin.window toggleFullScreen:nil];
     }
 }
+// index >= 0: [NSScreen screens] order (0 = the display with the menu bar).
+// Otherwise match width x height against each display's size in points or in pixels.
+int _glfwPlatformMoveWindowToDisplay( int index, int width, int height )
+{
+    NSArray *screens = [NSScreen screens];
+    NSScreen *target = nil;
+    NSUInteger i, found = 0;
+
+    if (index >= 0) {
+        if ((NSUInteger)index < [screens count]) {
+            target = [screens objectAtIndex:index];
+            found = index;
+        }
+    } else {
+        for (i = 0; i < [screens count]; i++) {
+            NSScreen *s = [screens objectAtIndex:i];
+            NSSize pt = [s frame].size;
+            NSSize px = [s convertRectToBacking:[s frame]].size;
+            if (((int)pt.width == width && (int)pt.height == height) ||
+                ((int)px.width == width && (int)px.height == height)) {
+                target = s;
+                found = i;
+                break;
+            }
+        }
+    }
+    if (target == nil)
+        return -1;
+
+    if ([_glfwWin.window screen] != target) {
+        // centre the window in the target display so it goes full screen there
+        NSRect area = [target visibleFrame];
+        NSRect frame = [_glfwWin.window frame];
+        if (frame.size.width > area.size.width)
+            frame.size.width = area.size.width;
+        if (frame.size.height > area.size.height)
+            frame.size.height = area.size.height;
+        frame.origin.x = area.origin.x + (area.size.width - frame.size.width) / 2;
+        frame.origin.y = area.origin.y + (area.size.height - frame.size.height) / 2;
+        [_glfwWin.window setFrame:frame display:YES];
+    }
+    return (int)found;
+}
 void _glfwPlatformGetRenderingSize( int *width, int *height)
 {
     NSRect backingBounds = [[_glfwWin.window contentView] convertRectToBacking:[[_glfwWin.window contentView] bounds]];

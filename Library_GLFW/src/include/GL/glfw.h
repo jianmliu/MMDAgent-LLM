@@ -508,6 +508,7 @@ GLFWAPI void GLFWAPIENTRY glfwDisableTransparent();
 GLFWAPI void GLFWAPIENTRY glfwMakeCurrentAnotherContext( void );
 GLFWAPI void GLFWAPIENTRY glfwEnableFullScreen( void );
 GLFWAPI void GLFWAPIENTRY glfwDisableFullScreen( void );
+GLFWAPI int  GLFWAPIENTRY glfwMoveWindowToDisplay( int index, int width, int height );
 GLFWAPI void GLFWAPIENTRY glfwGetRenderingSize( int *width, int *height);
 GLFWAPI void GLFWAPIENTRY glfwGetWindowPlacementInfo(int *x, int *y, int *width, int *height, int *maximized, int *fullscreen);
 GLFWAPI void GLFWAPIENTRY glfwSetWindowPlacementInfo(int x, int y, int width, int height, int maximized, int fullscreen);

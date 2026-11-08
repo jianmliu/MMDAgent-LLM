@@ -289,6 +289,7 @@ void _glfwPlatformDisableTransparent();
 #endif /* _WIN32 */
 void _glfwPlatformEnableFullScreen( void );
 void _glfwPlatformDisableFullScreen( void );
+int  _glfwPlatformMoveWindowToDisplay( int index, int width, int height );
 void _glfwPlatformGetRenderingSize( int *width, int *height );
 void _glfwPlatformGetWindowPlacementInfo(int *x, int *y, int *width, int *height, int *maximized, int *fullscreen);
 void _glfwPlatformSetWindowPlacementInfo(int x, int y, int width, int height, int maximized, int fullscreen);

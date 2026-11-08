@@ -123,6 +123,10 @@
 #define OPTION_FULLSCREEN_STR "full_screen"
 #define OPTION_FULLSCREEN_DEF false
 
+/* display to go full screen on (this fork, macOS): "WxH" picks the first display of that size
+   (points or pixels), a number picks that display (0 = the one with the menu bar) */
+#define OPTION_FULLSCREENDISPLAY_STR "full_screen_display"
+
 #define OPTION_LOGSIZE_STR  "log_size"
 #define OPTION_LOGSIZEW_DEF 80
 #define OPTION_LOGSIZEH_DEF 30
@@ -352,6 +356,7 @@ private:
    /* window */
    int m_windowSize[2];
    bool m_fullScreen;
+   char *m_fullScreenDisplay;
 
    /* log */
    int m_logSize[2];
@@ -525,6 +530,12 @@ public:
 
    /* setFullScreen: set full screen flag */
    void setFullScreen(bool b);
+
+   /* getFullScreenDisplay: get full screen display ("WxH" or index, NULL if not set) */
+   char *getFullScreenDisplay();
+
+   /* setFullScreenDisplay: set full screen display */
+   void setFullScreenDisplay(const char *str);
 
    /* getLogSize: get log window size */
    int* getLogSize();

@@ -251,6 +251,19 @@ void ScreenWindow::exitFullScreen()
 #endif /* !MMDAGENT_DONTUSEWINDOW */
 }
 
+/* ScreenWindow::moveToDisplay: move window onto a display (by index if >= 0, else by size), return its index or -1 */
+int ScreenWindow::moveToDisplay(int index, int width, int height)
+{
+#ifndef MMDAGENT_DONTUSEWINDOW
+   if (m_enable == false || m_fullScreen == true)
+      return -1;
+
+   return glfwMoveWindowToDisplay(index, width, height);
+#else
+   return -1;
+#endif /* !MMDAGENT_DONTUSEWINDOW */
+}
+
 /* ScreenWindow::saveWindowPosition: save current window postion to file */
 void ScreenWindow::saveWindowPosition()
 {

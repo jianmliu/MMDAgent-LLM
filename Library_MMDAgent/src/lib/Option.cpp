@@ -139,6 +139,7 @@ void Option::initialize()
    m_maxNumModel = OPTION_MAXNUMMODEL_DEF;
 
    m_logFile = NULL;
+   m_fullScreenDisplay = NULL;
    m_bulletFloor = OPTION_BULLETFLOOR_DEF;
 
    m_showButton = OPTION_SHOWBUTTON_DEF;
@@ -181,6 +182,8 @@ Option::~Option()
 {
    if (m_logFile)
       free(m_logFile);
+   if (m_fullScreenDisplay)
+      free(m_fullScreenDisplay);
    initialize();
 }
 
@@ -276,6 +279,8 @@ bool Option::load(const char *file, ZFileKey *key, char **errstr)
             setWindowSize(ivec2);
       } else if(MMDAgent_strequal(buf, OPTION_FULLSCREEN_STR)) {
          setFullScreen(MMDAgent_str2bool(p1));
+      } else if(MMDAgent_strequal(buf, OPTION_FULLSCREENDISPLAY_STR)) {
+         setFullScreenDisplay(p1);
       } else if(MMDAgent_strequal(buf, OPTION_LOGSIZE_STR)) {
          if(MMDAgent_str2ivec(p1, ivec2, 2))
             setLogSize(ivec2);
@@ -649,6 +654,20 @@ bool Option::getFullScreen()
 void Option::setFullScreen(bool b)
 {
    m_fullScreen = b;
+}
+
+/* Option::getFullScreenDisplay: get full screen display ("WxH" or index, NULL if not set) */
+char *Option::getFullScreenDisplay()
+{
+   return m_fullScreenDisplay;
+}
+
+/* Option::setFullScreenDisplay: set full screen display */
+void Option::setFullScreenDisplay(const char *str)
+{
+   if (m_fullScreenDisplay)
+      free(m_fullScreenDisplay);
+   m_fullScreenDisplay = MMDAgent_strlen(str) > 0 ? MMDAgent_strdup(str) : NULL;
 }
 
 /* Option::getLogSize: get log window size */

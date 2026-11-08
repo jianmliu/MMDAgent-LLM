@@ -2403,8 +2403,10 @@ bool MMDAgent::setupWorld()
    m_renderOrder = (int *)malloc(sizeof(int) * m_option->getMaxNumModel());
 
    /* set full screen */
-   if (m_option->getFullScreen() == true)
+   if (m_option->getFullScreen() == true) {
+      moveToFullScreenDisplay();
       m_screen->setFullScreen();
+   }
 
    /* update light */
    updateLight();
@@ -4985,9 +4987,36 @@ void MMDAgent::procFullScreenMessage()
       m_screen->exitFullScreen();
       m_option->setFullScreen(false);
    } else {
+      moveToFullScreenDisplay();
       m_screen->setFullScreen();
       m_option->setFullScreen(true);
    }
+}
+
+/* MMDAgent::moveToFullScreenDisplay: move window onto the full_screen_display before going full screen */
+void MMDAgent::moveToFullScreenDisplay()
+{
+#ifdef __APPLE__
+   const char *spec = m_option->getFullScreenDisplay();
+   int index = -1, width = 0, height = 0;
+   int ret;
+
+   if (spec == NULL)
+      return;
+
+   if (sscanf(spec, "%d%*[xX]%d", &width, &height) == 2) {
+      index = -1;
+   } else if (sscanf(spec, "%d", &index) != 1 || index < 0) {
+      sendLogString(m_moduleId, MLOG_WARNING, "full_screen_display: \"%s\" is not WxH or a display number, using the current display", spec);
+      return;
+   }
+
+   ret = m_screen->moveToDisplay(index, width, height);
+   if (ret < 0)
+      sendLogString(m_moduleId, MLOG_WARNING, "full_screen_display: no display matches \"%s\", going full screen on the current (main) display", spec);
+   else
+      sendLogString(m_moduleId, MLOG_STATUS, "full_screen_display: going full screen on display %d (\"%s\")", ret, spec);
+#endif /* __APPLE__ */
 }
 
 /* MMDAgent::procInfoStringMessage: process information string message */
